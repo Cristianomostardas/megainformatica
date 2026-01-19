@@ -26,24 +26,564 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
-        // --- CONFIGURAÇÃO DA LOJA ---
-        const STORE_PHONE = "5551996040261"; 
+        // =================================================================================
+        // ÁREA DE CONFIGURAÇÃO (EDITE AQUI)
+        // =================================================================================
+
+        // --- 1. DADOS DA LOJA ---
+        const STORE_PHONE = "5551996200301"; 
         const STORE_NAME = "Mega Informática & Papelaria";
         const STORE_ADDRESS = "Rua Luiz Araújo, 819 - Centro - Mostardas";
 
-        // --- BANCO DE DADOS (Simulado) ---
+        // --- 2. CADASTRO DAS ESCOLAS E SÉRIES ---
         const schools = [
-            { id: 1, name: "E. M. Ruy Miguel" },
-            { id: 2, name: "Creche Iolanda Tesche" },
-            { id: 3, name: "Creche Hélio Rodrigues" },
-            { id: 4, name: "E. E. E. F. 11 de Abril" }
+            { id: 1, name: "EMEI Hélio Rodrigues da Silva" },
+            { id: 2, name: "EMEI Dona Iolanda Tesche" },
+            { id: 3, name: "EMEI Ruy Miguel Victorino" },
+            { id: 4, name: "EMEI Marcelo Gama"},
+            { id: 5, name: "E.E.E.F. 11 de Abril" }
         ];
 
-        const grades = [
-            "Maternal", "Jardim I", "Jardim II", "1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano", "6º ao 9º Ano", "Ensino Médio"
+        // Lista MESTRA de séries para manter a ordem correta de exibição
+        const allGradesOrder = [
+            "Berçário II", "Maternal", "Maternal I", "Maternal II", 
+            "Jardim I", "Jardim II", 
+            "1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano", 
+            "6º Ano", "7º Ano", "8º Ano", "9º Ano", 
+            "Ensino Médio"
         ];
+
+        // --- 3. CADASTRO DAS LISTAS DE MATERIAIS (INDIVIDUAL POR ESCOLA E SÉRIE) ---
+        // Estrutura: { ID_DA_ESCOLA: { "NOME DA SÉRIE": [ ...materiais... ] } }
+        
+        const LISTS_DB = {
+            // --- LISTAS DA ESCOLA 1 (EMEI Hélio Rodrigues) ---
+            1: {
+                "Berçário II": [
+                    { name: "1 Tinta guache grande", category: "Papelaria" },
+                    { name: "1 Pincel nº 20 ou 24", category: "Transporte" },
+                    { name: "1 Folha de cartolina", category: "Higiene" },
+                    { name: "1 folha de EVA", category: "Alimentação" },
+                    { name: "1 folha de EVA com glitter", category: "Arte" },
+                    { name: "1 Papel crepom", category: "Arte" },
+                    { name: "1 Papel colorset", category: "Arte" },
+                    { name: "1 Rolinho de pintura pequeno", category: "Arte" },
+                    { name: "1 Caixa ou pacote de Algodão", category: "Arte" },
+                    { name: "1 Massinha de modelar", category: "Arte" },
+                    { name: "1 Cola branca", category: "Arte" },
+                    { name: "1 Caixa de giz de cera (meu 1º giz)", category: "Arte" },
+                    { name: "1 Pacote de folha de sulfite branca A4", category: "Arte" },
+                    { name: "1 Pacote de palito de picolé", category: "Arte" },
+                    { name: "1 Pacote de balões coloridos", category: "Arte" },
+                    { name: "1 Brinquedo na faixa etária", category: "Arte" },
+                    { name: "1 Livro infantil de material resistente (pano/plástico)", category: "Arte" }
+                ],
+                "Maternal I": [
+                    { name: "1 Tinta têmpera", category: "Papelaria" },
+                    { name: "1 Massinha de modelar", category: "Arte" },
+                    { name: "1 Pincel nº 16", category: "Colas" },
+                    { name: "1 Papel crepom", category: "Acessórios" },
+                    { name: "1 Folha EVA", category: "Organização" },
+                    { name: "100 folhas de ofício", category: "Organização" },
+                    { name: "1 Brinquedo faixa etária 2-3 anos (Ex: Bonecas, carrinhos, panelinhas, ursos, bolas)", category: "Organização" }
+                ],
+                "Maternal II": [
+                    { name: "1 Folha de EVA", category: "Papelaria" },
+                    { name: "1 Folha de colorset", category: "Arte" },
+                    { name: "1 Folha de cartolina", category: "Colas" },
+                    { name: "1 Agenda escolar", category: "Acessórios" },
+                    { name: "1 Garrafa para água", category: "Organização" },
+                    { name: "1 Tubo de cola", category: "Organização" },
+                    { name: "1 Têmpera Grande", category: "Organização" },
+                    { name: "1 Pincel", category: "Organização" },
+                    { name: "1 Tesoura escolar", category: "Organização" },
+                    { name: "1 Cx de Lápis de Cor", category: "Organização" },
+                    { name: "1 Cx Giz de Cera", category: "Organização" },
+                    { name: "2 Cx de Massa de Modelar", category: "Organização" },
+                    { name: "1 Cx de algodão", category: "Organização" },
+                    { name: "1 livro infantil", category: "Organização" },
+                    { name: "1 Jogo pedagógico (3-4 anos)", category: "Organização" },
+                    { name: "Folhas de ofício", category: "Organização" },
+                    { name: "1 Pacote de Palito de Picolé", category: "Organização" },
+                    { name: "1 Brinquedo", category: "Organização" }
+                ],
+                "Jardim I": [
+                    { name: "1 Cola branca média", category: "Papelaria" },
+                    { name: "1 Tesoura sem ponta", category: "Arte" },
+                    { name: "1 Lápis de escrever", category: "Colas" },
+                    { name: "1 Cx de giz de cera", category: "Acessórios" },
+                    { name: "1 Borracha branca", category: "Organização" },
+                    { name: "1 Apontador", category: "Organização" },
+                    { name: "1 Caneta Marca Texto", category: "Organização" },
+                    { name: "1 Pincel para quadro branco", category: "Organização" },
+                    { name: "1 Cx de cola glitter", category: "Organização" },
+                    { name: "1 Cx de Lápis de Cor longo", category: "Organização" },
+                    { name: "1 Cx de cola colorida", category: "Organização" },
+                    { name: "3 Cx Massa de modelar", category: "Organização" },
+                    { name: "1 Pct Folha A4 branca", category: "Organização" },
+                    { name: "1 Pct Folha A4 180g", category: "Organização" },
+                    { name: "10 fls Papel A4 180g coloridas", category: "Organização" },
+                    { name: "1 Folha EVA estampado, lisa ou crespa", category: "Organização" },
+                    { name: "1 Folha EVA com glitter", category: "Organização" },
+                    { name: "2 Folhas de Papel Colorset", category: "Organização" },
+                    { name: "1 Folha de Papel Cartaz", category: "Organização" },
+                    { name: "1 Papel Crepom", category: "Organização" },
+                    { name: "1 m de Papel Contact", category: "Organização" },
+                    { name: "1 Pote de Tinta grande", category: "Organização" },
+                    { name: "1 Pincel nº 16", category: "Organização" },
+                    { name: "1 Pacote de Palitos de picolé", category: "Organização" },
+                    { name: "1 Pacote de Palitos de churrasco", category: "Organização" },
+                    { name: "1 brinquedo faixa etária 4/6 anos (sugestão: carrinho, boneca)", category: "Organização" },
+                    { name: "1 jogo pedagógico faixa etária 4/6 anos (sugestão: quebra-cabeça, outros)", category: "Organização" },
+                    { name: "1 Cx de Cotonetes", category: "Organização" },
+                    { name: "1 Cx de Algodão", category: "Organização" },
+                    { name: "1 Lastex", category: "Organização" }
+                ],
+                "Jardim II": [
+                    { name: "1 Cola branca média", category: "Papelaria" },
+                    { name: "1 Tesoura sem ponta", category: "Arte" },
+                    { name: "1 Lápis de escrever", category: "Colas" },
+                    { name: "1 Cx de giz de cera", category: "Acessórios" },
+                    { name: "1 Borracha branca", category: "Organização" },
+                    { name: "1 Apontador", category: "Organização" },
+                    { name: "1 Caneta Marca Texto", category: "Organização" },
+                    { name: "1 Pincel para quadro branco", category: "Organização" },
+                    { name: "1 Cx de cola glitter", category: "Organização" },
+                    { name: "1 Cx de Lápis de Cor longo", category: "Organização" },
+                    { name: "1 Cx de cola colorida", category: "Organização" },
+                    { name: "3 Cx Massa de modelar", category: "Organização" },
+                    { name: "1 Pct Folha A4 branca", category: "Organização" },
+                    { name: "1 Pct Folha A4 180g", category: "Organização" },
+                    { name: "10 fls Papel A4 180g coloridas", category: "Organização" },
+                    { name: "1 Folha EVA estampado, lisa ou crespa", category: "Organização" },
+                    { name: "1 Folha EVA com glitter", category: "Organização" },
+                    { name: "2 Folhas de Papel Colorset", category: "Organização" },
+                    { name: "1 Folha de Papel Cartaz", category: "Organização" },
+                    { name: "1 Papel Crepom", category: "Organização" },
+                    { name: "1 m de Papel Contact", category: "Organização" },
+                    { name: "1 Pote de Tinta grande", category: "Organização" },
+                    { name: "1 Pincel nº 16", category: "Organização" },
+                    { name: "1 Pacote de Palitos de picolé", category: "Organização" },
+                    { name: "1 Pacote de Palitos de churrasco", category: "Organização" },
+                    { name: "1 brinquedo faixa etária 4/6 anos (sugestão: carrinho, boneca)", category: "Organização" },
+                    { name: "1 jogo pedagógico faixa etária 4/6 anos (sugestão: quebra-cabeça, outros)", category: "Organização" },
+                    { name: "1 Cx de Cotonetes", category: "Organização" },
+                    { name: "1 Cx de Algodão", category: "Organização" },
+                    { name: "1 Lastex", category: "Organização" }
+                ]
+            },
+
+            // --- LISTAS DA ESCOLA 2 (EMEI Dona Iolanda Tesche) ---
+            2: {
+                "Jardim I": [
+                    { name: "1 cx. de lápis de cor longo, de boa qualidade (identificados)", category: "Papelaria" },
+                    { name: "1 kit pequeno de canetas hidrocor ponta grossa, de boa qualidade (identificadas)", category: "Acessórios" },
+                    { name: "2 lápis de escrever (com nome)", category: "Higiene" },
+                    { name: "1 apontador com depósito (com nome)", category: "Arte" },
+                    { name: "1 borracha (com nome)", category: "Higiene" },
+                    { name: "1 tesoura sem ponta, de boa qualidade (com nome)", category: "Higiene" },
+                    { name: "1 tubo de cola branca grande (com nome) - Sugestão: Tenaz, Bic ou Mercury", category: "Higiene" },
+                    { name: "1 estojo para guardar o material", category: "Higiene" },
+                    { name: "1 cx. de massa de modelar 12 cores (soft)", category: "Higiene" },
+                    { name: "1 pote de margarina ou doce vazio e limpo (para guardar a massa)", category: "Higiene" },
+                    { name: "1 escova de dente (com estojo)", category: "Higiene" },
+                    { name: "1 creme dental infantil", category: "Higiene" },
+                    { name: "1 pacote de lenço umedecido", category: "Higiene" },
+                    { name: "2 caixas de fósforos", category: "Higiene" },
+                    { name: "1 jogo pedagógico preferencialmente peças de madeira", category: "Higiene" },
+                    { name: "1 pacote de palito de picolé (cor de sua escolha)", category: "Higiene" },
+                    { name: "1 rolinho pequeno para pintura", category: "Higiene" },
+                    { name: "1 tinta guache grande (250ml) na cor: (ver lista de cores abaixo)", category: "Higiene" },
+                    { name: "Cores: Cinza, preto, laranja, amarelo ouro, amarelo pele, amarelo ocre, marrom, verde folha, verde bandeira, vermelho fogo, rosa, magenta, violeta ou lilás, branco, azul, azul turquesa.", category: "Observação" }
+                ],
+                "Jardim II": [
+                    { name: "1 cx. de lápis de cor longo, de boa qualidade (identificados)", category: "Papelaria" },
+                    { name: "1 kit pequeno de canetas hidrocor ponta grossa, de boa qualidade (identificadas)", category: "Acessórios" },
+                    { name: "2 lápis de escrever (com nome)", category: "Higiene" },
+                    { name: "1 apontador com depósito (com nome)", category: "Arte" },
+                    { name: "1 borracha (com nome)", category: "Higiene" },
+                    { name: "1 tesoura sem ponta, de boa qualidade (com nome)", category: "Higiene" },
+                    { name: "1 tubo de cola branca grande (com nome) - Sugestão: Tenaz, Bic ou Mercury", category: "Higiene" },
+                    { name: "1 estojo para guardar o material", category: "Higiene" },
+                    { name: "1 cx. de massa de modelar 12 cores (soft)", category: "Higiene" },
+                    { name: "1 pote de margarina ou doce vazio e limpo (para guardar a massa)", category: "Higiene" },
+                    { name: "1 escova de dente (com estojo)", category: "Higiene" },
+                    { name: "1 creme dental infantil", category: "Higiene" },
+                    { name: "1 pacote de lenço umedecido", category: "Higiene" },
+                    { name: "2 caixas de fósforos", category: "Higiene" },
+                    { name: "1 Pasta de folhinhas", category: "Papelaria" },
+                    { name: "1 jogo pedagógico preferencialmente peças de madeira", category: "Higiene" },
+                    { name: "1 pacote de palito de picolé (cor de sua escolha)", category: "Higiene" },
+                    { name: "1 rolinho pequeno para pintura", category: "Higiene" },
+                    { name: "1 tinta guache grande (250ml) na cor: (ver lista de cores abaixo)", category: "Higiene" },
+                    { name: "Cores: Cinza, preto, laranja, amarelo ouro, amarelo pele, amarelo ocre, marrom, verde folha, verde bandeira, vermelho fogo, rosa, magenta, violeta ou lilás, branco, azul, azul turquesa.", category: "Observação" }
+                ]
+            },
+
+            // --- LISTAS DA ESCOLA 3 (EMEI Ruy Miguel Victorino) ---
+            3: {
+                "1º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "1 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "1 Caderno Brochura", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pincel nº 12", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 Folha E.V.A liso", category: "Aviso" },
+                    { name: "1 Folha papel colorset", category: "Aviso" },
+                    { name: "2 Folhas plastificadora A4", category: "Aviso" },
+                    { name: "1 Rolo de fita dupla face fina", category: "Aviso"},
+                    { name: "1 jogo de quebra-cabeça", category: "Aviso" },
+                    { name: "1 caneta para quadro branco", category: "Aviso" }
+                ],
+                "2º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "2 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "1 Caderno grande 96 folhas c/espiral", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício coloridas", category: "Aviso"},
+                    { name: "1 Pincel nº 12", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 Folha E.V.A liso", category: "Aviso" },
+                    { name: "1 Folha de E.V.A.  com glitter", category: "Aviso"},
+                    { name: "1 Folha papel colorset", category: "Aviso" },
+                    { name: "1 jogo de tabuleiro", category: "Aviso" },
+                    { name: "1 caneta para quadro branco", category: "Aviso" }
+                    
+                ],
+                "3º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "2 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "4 Cadernos grandes 96 folhas c/espiral", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício coloridas", category: "Aviso"},
+                    { name: "1 Pincel nº 12", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 Folha E.V.A liso", category: "Aviso" },
+                    { name: "1 Folha de E.V.A.  com glitter", category: "Aviso"},
+                    { name: "1 Folha papel colorset", category: "Aviso" },
+                    { name: "1 Metro de papel contatc transparente", category: "Aviso"},
+                    { name: "1 jogo de tabuleiro", category: "Aviso" },
+                    { name: "1 Pote de tinta guache 250ml (cor de preferência)", category: "Aviso" },
+                    { name: "1 caneta para quadro branco", category: "Aviso" }
+                ],
+                "4º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "2 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "1 Caderno grande 10 matérias c/espiral (ou 1 cad. p/disciplina. São oito: Português, Matemática, Ciências, Geografia, História, Arte, Educação Física e Ensino Religioso)", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício coloridas", category: "Aviso"},
+                    { name: "1 Pincel nº 12", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 Folha E.V.A liso", category: "Aviso" },
+                    { name: "1 Folha de E.V.A.  com glitter", category: "Aviso"},
+                    { name: "1 Folha papel colorset", category: "Aviso" },
+                    { name: "1 Metro de papel contatc transparente", category: "Aviso"},
+                    { name: "1 jogo de tabuleiro", category: "Aviso" },
+                    { name: "1 Pote de tinta guache 250ml (cor de preferência)", category: "Aviso" },
+                    { name: "1 caneta para quadro branco", category: "Aviso" }
+                ],
+                "5º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "2 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "1 Caderno grande 10 matérias c/espiral (ou 1 cad. p/disciplina. São oito: Português, Matemática, Ciências, Geografia, História, Arte, Educação Física e Ensino Religioso)", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício coloridas", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 jogo de tabuleiro", category: "Aviso" },
+                    { name: "Roupas e calçados confortávies para as aulas de Ed. Física", category: "Aviso" }
+                ],
+                "6º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "2 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "Lápis Grafite (HB e 2B)", category: "Aviso" },
+                    { name: "1 Caderno grande 10 matérias c/espiral (ou 1 cad. p/disciplina. São nove: Português, Matemática, Ciências, Geografia, História, Arte, Educação Física, Inglês e Ensino Religioso)", category: "Aviso" },
+                    { name: "1 Caneta esferográfica azul", category: "Aviso" },
+                    { name: "1 Caneta esferográfica preta", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Compasso", category: "Aviso" },
+                    { name: "1 Transferidor", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício coloridas", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 Pincel", category: "Aviso" },
+                    { name: "Giz de cera", category: "Aviso" },
+                    { name: "1 Tubo de tinta guache (cor de sua preferência)", category: "Aviso" },
+                    { name: "1 jogo de tabuleiro", category: "Aviso" },
+                    { name: "Roupas e calçados confortávies para as aulas de Ed. Física", category: "Aviso" }
+                ],
+                "7º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "2 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "Lápis Grafite (HB e 2B)", category: "Aviso" },
+                    { name: "1 Caderno grande 10 matérias c/espiral (ou 1 cad. p/disciplina. São nove: Português, Matemática, Ciências, Geografia, História, Arte, Educação Física, Inglês e Ensino Religioso)", category: "Aviso" },
+                    { name: "1 Caneta esferográfica azul", category: "Aviso" },
+                    { name: "1 Caneta esferográfica preta", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Compasso", category: "Aviso" },
+                    { name: "1 Transferidor", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício coloridas", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 Pincel", category: "Aviso" },
+                    { name: "Giz de cera", category: "Aviso" },
+                    { name: "1 Tubo de tinta guache (cor de sua preferência)", category: "Aviso" },
+                    { name: "1 jogo de tabuleiro", category: "Aviso" },
+                    { name: "Roupas e calçados confortávies para as aulas de Ed. Física", category: "Aviso" }
+                ],
+                "8º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "2 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "Lápis Grafite (HB e 2B)", category: "Aviso" },
+                    { name: "1 Caderno grande 10 matérias c/espiral (ou 1 cad. p/disciplina. São nove: Português, Matemática, Ciências, Geografia, História, Arte, Educação Física, Inglês e Ensino Religioso)", category: "Aviso" },
+                    { name: "1 Caneta esferográfica azul", category: "Aviso" },
+                    { name: "1 Caneta esferográfica preta", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Compasso", category: "Aviso" },
+                    { name: "1 Transferidor", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício coloridas", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 Pincel", category: "Aviso" },
+                    { name: "Giz de cera", category: "Aviso" },
+                    { name: "1 Tubo de tinta guache (cor de sua preferência)", category: "Aviso" },
+                    { name: "1 jogo de tabuleiro", category: "Aviso" },
+                    { name: "Roupas e calçados confortávies para as aulas de Ed. Física", category: "Aviso" }
+                ],
+                "9º Ano": [
+                    { name: "1 cx. massa de modelar macia 12 cores (soft)", category: "Aviso" },
+                    { name: "1 pote de margarina ou doce (vazio e limpo p/guardar massa de modelar)", category: "Aviso" },
+                    { name: "1 cx. lápis de cor longo, de boa qualidade", category: "Aviso" },
+                    { name: "2 lápis de escrever (com nome)", category: "Aviso" },
+                    { name: "Lápis Grafite (HB e 2B)", category: "Aviso" },
+                    { name: "1 Caderno grande 10 matérias c/espiral (ou 1 cad. p/disciplina. São nove: Português, Matemática, Ciências, Geografia, História, Arte, Educação Física, Inglês e Ensino Religioso)", category: "Aviso" },
+                    { name: "1 Caneta esferográfica azul", category: "Aviso" },
+                    { name: "1 Caneta esferográfica preta", category: "Aviso" },
+                    { name: "1 Apontador (com nome)", category: "Aviso" },
+                    { name: "1 Borracha", category: "Aviso" },
+                    { name: "1 Tesoura sem ponta, de boa qualidade", category: "Aviso"},
+                    { name: "1 Tubo de cola (Sugestão: Tenaz, Mercury ou Bic)", category: "Aviso" },
+                    { name: "1 Régua 30cm", category: "Aviso" },
+                    { name: "1 Compasso", category: "Aviso" },
+                    { name: "1 Transferidor", category: "Aviso" },
+                    { name: "1 Estojo para guardar o material", category: "Aviso" },
+                    { name: "1 Garrafinha p/água (vai e vem diariamente)", category: "Aviso" },
+                    { name: "1 Pasta plástica tamanho A4 (p/guardar as atividades)", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício", category: "Aviso" },
+                    { name: "1 Pacote de folhas de ofício coloridas", category: "Aviso"},
+                    { name: "1 Caderno de desenho (simples)", category: "Aviso"},
+                    { name: "1 Canetinha hidrocor", category: "Aviso" },
+                    { name: "1 Pincel", category: "Aviso" },
+                    { name: "Giz de cera", category: "Aviso" },
+                    { name: "1 Tubo de tinta guache (cor de sua preferência)", category: "Aviso" },
+                    { name: "1 jogo de tabuleiro", category: "Aviso" },
+                    { name: "Roupas e calçados confortávies para as aulas de Ed. Física", category: "Aviso" }
+                ]
+            }, 
+
+            // --- LISTAS DA ESCOLA 4 (EMEI Marcelo Gama) ---
+            4: {
+                "Jardim I": [
+                    { name: "2 Lápis de escrever", category: "Papelaria" },
+                    { name: "1 Borracha", category: "Papelaria" },
+                    { name: "1 Tesoura", category: "Papelaria" },
+                    { name: "1 Apontador", category: "Papelaria" },
+                    { name: "1 Pincel", category: "Arte" },
+                    { name: "1 Lápis de Cor", category: "Arte" },
+                    { name: "1 Giz de Cera", category: "Arte" },
+                    { name: "2 Tubos de Cola Branca", category: "Colas" },
+                    { name: "100 folhas brancas A4", category: "Papelaria" },
+                    { name: "1 Massinha de Modelar", category: "Arte" },
+                    { name: "1 Estojo", category: "Organização" },
+                    { name: "Canetinhas Hidrocor", category: "Arte" },
+                    { name: "1 Lixa dágua preta", category: "Arte" },
+                    { name: "1 Caderno de desenho", category: "Papelaria" },
+                    { name: "1 Tinta guache 250ml (ver cor)", category: "Arte" },
+                    { name: "1 Cola colorida", category: "Colas" },
+                    { name: "2 tubos de Cola glitter", category: "Colas" },
+                    { name: "1 fl. Cartolina (ver cor)", category: "Papelaria" },
+                    { name: "1 fl. de E.V.A. (ver cor)", category: "Papelaria" },
+                    { name: "1 fl. E.V.A. com glitter", category: "Papelaria" },
+                    { name: "1 fl. Papel crepom", category: "Papelaria" },
+                    { name: "1 jogo ou brinquedo (blocos, boneco, carrinho)", category: "Organização" },
+                    { name: "1 folha papel colorset", category: "Papelaria" },
+                    { name: "50 fls. A4 coloridas (creative paper)", category: "Papelaria" },
+                    { name: "2 potes c/tampa (um p/guardar as massinhas e um p/giz de cera)", category: "Organização" }
+                ],
+                "Jardim II": [
+                    { name: "2 Lápis de escrever", category: "Papelaria" },
+                    { name: "1 Estojo", category: "Organização" },
+                    { name: "1 Borracha", category: "Papelaria" },
+                    { name: "1 Tesoura", category: "Papelaria" },
+                    { name: "1 Apontador", category: "Papelaria" },
+                    { name: "2 Tubos de Cola Branca", category: "Colas" },
+                    { name: "50 fls. A4 coloridas", category: "Papelaria" },
+                    { name: "100 folhas brancas A4", category: "Papelaria" },
+                    { name: "1 Massinha de Modelar", category: "Arte" },
+                    { name: "1 Lápis de Cor", category: "Arte" },
+                    { name: "1 Caderno de desenho", category: "Papelaria" },
+                    { name: "1 Pct. de palitos de picolé", category: "Arte"},
+                    { name: "1 Cola colorida (cores variadas)", category: "Colas" },
+                    { name: "2 tubos de Cola glitter", category: "Colas" },
+                    { name: "1 fl. Cartolina (ver cor)", category: "Papelaria" },
+                    { name: "1 fl. de E.V.A. (ver cor)", category: "Papelaria" },
+                    { name: "1 Tinta guache pote grande (ver cor)", category: "Arte" },
+                    { name: "1 fl. E.V.A. com glitter", category: "Papelaria"},
+                    { name: "1 folha papel colorset", category: "Papelaria" },
+                    { name: "1 fl. Papel crepom", category: "Papelaria" },
+                    { name: "1 Pasta grampo trilho cartão", category: "Papelaria"},
+                    { name: "1 brinquedo (panelinhas, bonecos, animais, carrinhos)", category: "Organização" },
+                    { name: "1 pote c/tampa p/guardar as massinhas", category: "Organização" }
+                ],
+                "1º Ano": [
+                    { name: "Mochila (de preferência s/rodinhas)", category: "Transporte" },
+                    { name: "1 Tesoura", category: "Papelaria" },
+                    { name: "1 Lápis de Escrever", category: "Papelaria" },
+                    { name: "1 Borracha", category: "Papelaria" },
+                    { name: "1 Apontador", category: "Papelaria" },
+                    { name: "1 Cola Branca", category: "Colas" },
+                    { name: "10 fls. A4 180g", category: "Papelaria" },
+                    { name: "100 folhas brancas A4", category: "Papelaria" },
+                    { name: "1 Cx. Massinha de Modelar", category: "Arte" },
+                    { name: "1 Lápis de Cor", category: "Arte" },
+                    { name: "1 Giz de cera", category: "Arte"},
+                    { name: "1 Caderno de desenho", category: "Papelaria" },
+                    { name: "1 Caderno Grande 96 fls.", category: "Papelaria"},
+                    { name: "1 Pasta p/folhas A4", category: "Organização" },
+                    { name: "1 Livro de literatura infantil", category: "Livros" },
+                    { name: "1 Ábaco (conforme foto a seguir)", category: "Matemática" }
+                ],
+                "4º Ano": [
+                    { name: "1 Mochila", category: "Transporte" },
+                    { name: "1 Estojo", category: "Organização" },
+                    { name: "1 Lápis de escrever", category: "Papelaria" },
+                    { name: "1 Borracha", category: "Papelaria" },
+                    { name: "1 Tesoura", category: "Papelaria" },
+                    { name: "1 Apontador", category: "Papelaria" },
+                    { name: "1 Tubo de Cola Branca", category: "Colas" },
+                    { name: "1 Régua de 30cm", category: "Papelaria" },
+                    { name: "50 fls. A4 coloridas", category: "Papelaria" },
+                    { name: "1 Pincel", category: "Arte" },
+                    { name: "1 Canetinhas", category: "Arte" },
+                    { name: "1 Lápis de Cor", category: "Arte" },
+                    { name: "1 Caderno de desenho", category: "Papelaria" },
+                    { name: "10 fls. gramatura 180", category: "Papelaria" },
+                    { name: "3 Cadernos grandes 96 fls. (não é indicado o uso de cad. intel.)", category: "Papelaria" },
+                    { name: "1 Pasta para folhas A4", category: "Organização" },
+                    { name: "1 fl. Cartolina", category: "Papelaria" }
+                ],
+                "5º Ano": [
+                    { name: "1 Mochila", category: "Transporte" },
+                    { name: "1 Estojo", category: "Organização" },
+                    { name: "1 Lápis de escrever", category: "Papelaria" },
+                    { name: "1 Borracha", category: "Papelaria" },
+                    { name: "1 Tesoura", category: "Papelaria" },
+                    { name: "1 Apontador", category: "Papelaria" },
+                    { name: "1 Tubo de Cola Branca", category: "Colas" },
+                    { name: "1 Régua de 30cm", category: "Papelaria" },
+                    { name: "50 fls. A4 coloridas", category: "Papelaria" },
+                    { name: "1 Pincel", category: "Arte" },
+                    { name: "1 Lápis de Cor", category: "Arte" },
+                    { name: "10 fls. gramatura 180", category: "Papelaria" },
+                    { name: "Canetas: azul, preta e uma colorida", category: "Escrita" },
+                    { name: "1 Caderno de desenho", category: "Papelaria" },
+                    { name: "4 Cadernos grandes 96 fls.", category: "Papelaria" },
+                    { name: "1 Pasta para folhas A4", category: "Organização" },
+                    { name: "1 fl. Cartolina", category: "Papelaria" }
+                ]
+            }
+        };
+
+        // =================================================================================
+        // FIM DA ÁREA DE CONFIGURAÇÃO (NÃO PRECISA MEXER ABAIXO)
+        // =================================================================================
 
         // --- COMPONENTE DE ÍCONES ---
         const Icon = ({ name, className }) => {
@@ -73,48 +613,6 @@
             );
         };
 
-        // --- LÓGICA DO APP ---
-        const getListItems = (schoolId, grade) => {
-            // ITENS BÁSICOS (Aparecem para todos)
-            const basics = [
-                { id: 1, name: "Agenda Escolar 2026", category: "Papelaria" },
-                { id: 2, name: "Estojo Duplo", category: "Organização" },
-                { id: 3, name: "Mochila Escolar Resistente", category: "Transporte" },
-                { id: 4, name: "Garrafinha de Água", category: "Acessórios" },
-            ];
-
-            // LISTA INFANTIL (Maternal até 2º Ano)
-            const kids = [
-                { id: 10, name: "Caixa de Lápis de Cor (24 cores)", category: "Arte" },
-                { id: 11, name: "Massa de Modelar (12 cores)", category: "Arte" },
-                { id: 12, name: "Cola Branca 90g", category: "Colas" },
-                { id: 13, name: "Caderno de Desenho (Grande)", category: "Papelaria" },
-                { id: 14, name: "Tesoura sem ponta", category: "Acessórios" },
-                { id: 15, name: "Giz de Cera (12 cores)", category: "Arte" },
-                { id: 16, name: "Tinta Guache (6 cores)", category: "Arte" },
-                { id: 17, name: "Pincel Chato nº 8", category: "Arte" },
-            ];
-
-            // LISTA JUVENIL (3º Ano em diante)
-            const teens = [
-                { id: 20, name: "Caderno Universitário (10 matérias)", category: "Papelaria" },
-                { id: 21, name: "Kit Canetas Esferográficas (Azul/Preta/Vermelha)", category: "Escrita" },
-                { id: 22, name: "Corretivo em Fita", category: "Escrita" },
-                { id: 23, name: "Marca Texto (Kit 4 cores)", category: "Escrita" },
-                { id: 24, name: "Régua 30cm", category: "Geometria" },
-                { id: 25, name: "Lapiseira 0.7mm", category: "Escrita" },
-                { id: 26, name: "Grafite 0.7mm", category: "Escrita" },
-                { id: 27, name: "Calculadora Científica", category: "Eletrônicos" },
-                { id: 28, name: "Bloco de Notas Adesivas", category: "Papelaria" },
-            ];
-
-            if (["Maternal", "Jardim I", "Jardim II", "1º Ano", "2º Ano"].includes(grade)) {
-                return [...basics, ...kids];
-            } else {
-                return [...basics, ...teens];
-            }
-        };
-
         function App() {
             const [step, setStep] = useState(1);
             const [formData, setFormData] = useState({
@@ -127,9 +625,29 @@
             const [items, setItems] = useState([]);
             const [selectedItems, setSelectedItems] = useState(new Set());
 
+            // --- LÓGICA DE FILTRAGEM DE SÉRIES ---
+            // Calcula quais séries estão disponíveis baseado na escola selecionada
+            const availableGrades = useMemo(() => {
+                if (!formData.schoolId) return [];
+                
+                // Pega as séries que têm lista cadastrada para a escola selecionada
+                const schoolLists = LISTS_DB[formData.schoolId] || {};
+                const gradesWithLists = Object.keys(schoolLists);
+
+                // Filtra a lista mestra para manter a ordem correta
+                // Se a escola não estiver no DB ainda, retorna vazio.
+                return allGradesOrder.filter(grade => gradesWithLists.includes(grade));
+            }, [formData.schoolId]);
+
             const handleChange = (e) => {
                 const { name, value } = e.target;
-                setFormData(prev => ({ ...prev, [name]: value }));
+                
+                // Se mudou a escola, reseta a série selecionada
+                if (name === "schoolId") {
+                    setFormData(prev => ({ ...prev, [name]: value, grade: "" }));
+                } else {
+                    setFormData(prev => ({ ...prev, [name]: value }));
+                }
             };
 
             const handleNext = () => {
@@ -137,9 +655,18 @@
                     alert("Por favor, preencha a escola, série e seus dados de contato.");
                     return;
                 }
-                const list = getListItems(formData.schoolId, formData.grade);
-                setItems(list);
-                setSelectedItems(new Set(list.map(i => i.id)));
+
+                const schoolData = LISTS_DB[formData.schoolId];
+                const specificList = schoolData ? schoolData[formData.grade] : null;
+                const list = specificList || [];
+
+                if (list.length === 0) {
+                    alert("Ainda não temos a lista cadastrada para esta escola e série. Entre em contato pelo WhatsApp.");
+                }
+
+                const listWithIds = list.map((item, index) => ({ ...item, id: index }));
+                setItems(listWithIds);
+                setSelectedItems(new Set(listWithIds.map(i => i.id)));
                 setStep(2);
                 window.scrollTo(0, 0);
             };
@@ -155,23 +682,24 @@
                 const schoolName = schools.find(s => s.id == formData.schoolId)?.name;
                 const finalItems = items.filter(i => selectedItems.has(i.id));
 
-                if (finalItems.length === 0) {
-                    alert("Selecione pelo menos um item para orçar.");
-                    return;
-                }
-
                 let message = `Olá *${STORE_NAME}*! 👋\n`;
-                message += `Gostaria de um orçamento para a seguinte lista:\n\n`;
+                message += `Gostaria de um orçamento/informações:\n\n`;
                 message += `🏫 *Escola:* ${schoolName}\n`;
                 message += `📚 *Série:* ${formData.grade}\n`;
                 if (formData.studentName) message += `🎓 *Aluno(a):* ${formData.studentName}\n`;
                 message += `👤 *Responsável:* ${formData.parentName}\n`;
                 message += `📱 *Contato:* ${formData.parentPhone}\n\n`;
-                message += `*ITENS DESEJADOS (${finalItems.length}):*\n`;
-                finalItems.forEach(item => {
-                    message += `✅ ${item.name}\n`;
-                });
-                message += `\nAguardo o valor total e disponibilidade. Obrigado!`;
+                
+                if (finalItems.length > 0) {
+                    message += `*ITENS DA LISTA DESEJADOS (${finalItems.length}):*\n`;
+                    finalItems.forEach(item => {
+                        message += `✅ ${item.name} (${item.category})\n`;
+                    });
+                } else {
+                    message += `⚠️ *Nota:* Não selecionei itens específicos ou a lista não estava disponível no App. Por favor, verifiquem a disponibilidade para esta série.\n`;
+                }
+                
+                message += `\nAguardo o retorno. Obrigado!`;
 
                 const url = `https://wa.me/${STORE_PHONE}?text=${encodeURIComponent(message)}`;
                 window.open(url, '_blank');
@@ -211,9 +739,20 @@
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-600 mb-1">Selecione a Série *</label>
-                                            <select name="grade" value={formData.grade} onChange={handleChange} className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                <option value="">Toque para escolher...</option>
-                                                {grades.map(grade => (
+                                            <select 
+                                                name="grade" 
+                                                value={formData.grade} 
+                                                onChange={handleChange} 
+                                                className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                                                disabled={!formData.schoolId || availableGrades.length === 0}
+                                            >
+                                                <option value="">
+                                                    {!formData.schoolId 
+                                                        ? "Selecione uma escola primeiro..." 
+                                                        : (availableGrades.length === 0 ? "Nenhuma série cadastrada para esta escola" : "Toque para escolher...")
+                                                    }
+                                                </option>
+                                                {availableGrades.map(grade => (
                                                     <option key={grade} value={grade}>{grade}</option>
                                                 ))}
                                             </select>
@@ -268,22 +807,30 @@
                                         <h2 className="font-bold text-gray-700">Selecione os itens desejados:</h2>
                                         <p className="text-xs text-gray-500">Você pode desmarcar o que já tem em casa.</p>
                                     </div>
-                                    <div className="divide-y divide-gray-100">
-                                        {items.map((item) => {
-                                            const isSelected = selectedItems.has(item.id);
-                                            return (
-                                                <div key={item.id} onClick={() => toggleItem(item.id)} className={`p-4 flex items-center gap-4 cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50/50' : 'bg-white hover:bg-gray-50'}`}>
-                                                    <div className={`transition-all duration-200 ${isSelected ? 'text-indigo-600' : 'text-gray-300'}`}>
-                                                        {isSelected ? <Icon name="check-square" className="w-6 h-6" /> : <Icon name="square" className="w-6 h-6" />}
+                                    
+                                    {items.length === 0 ? (
+                                        <div className="p-8 text-center text-gray-500">
+                                            <p>Nenhum item cadastrado para esta lista ainda.</p>
+                                            <p className="text-xs mt-2">Você pode enviar a solicitação mesmo assim.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-gray-100">
+                                            {items.map((item) => {
+                                                const isSelected = selectedItems.has(item.id);
+                                                return (
+                                                    <div key={item.id} onClick={() => toggleItem(item.id)} className={`p-4 flex items-center gap-4 cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50/50' : 'bg-white hover:bg-gray-50'}`}>
+                                                        <div className={`transition-all duration-200 ${isSelected ? 'text-indigo-600' : 'text-gray-300'}`}>
+                                                            {isSelected ? <Icon name="check-square" className="w-6 h-6" /> : <Icon name="square" className="w-6 h-6" />}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className={`font-medium ${isSelected ? 'text-gray-900' : 'text-gray-500'}`}>{item.name}</p>
+                                                            <p className="text-xs text-gray-400">{item.category}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex-1">
-                                                        <p className={`font-medium ${isSelected ? 'text-gray-900' : 'text-gray-500'}`}>{item.name}</p>
-                                                        <p className="text-xs text-gray-400">{item.category}</p>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-200 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-20">
